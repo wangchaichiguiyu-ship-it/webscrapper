@@ -25,6 +25,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from ..auth import AuthStore
 from ..config import Settings
 from ..errors import (
     InvalidUrlError,
@@ -289,10 +290,20 @@ def parse_playurl(
 class BilibiliApiExtractor:
     name = "bilibili_api"
 
-    def __init__(self, client: httpx.AsyncClient, settings: Settings) -> None:
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        settings: Settings,
+        auth: AuthStore | None = None,
+    ) -> None:
         self.client = client
         self.settings = settings
+        self.auth = auth
         self._buvid_refreshed = False
+
+    @property
+    def has_cookie(self) -> bool:
+        return self.auth.configured if self.auth is not None else self.settings.has_cookie
 
     async def _get_api(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         last_error: Exception | None = None
@@ -432,7 +443,7 @@ class BilibiliApiExtractor:
 
         warnings: list[str] = []
         streams = parse_playurl(
-            play, settings=self.settings, has_cookie=self.settings.has_cookie, warnings=warnings
+            play, settings=self.settings, has_cookie=self.has_cookie, warnings=warnings
         )
         best = streams[0] if streams else None
         if best is None:  # defensive; parse_playurl already raises

@@ -15,7 +15,7 @@ from tests.helpers import make_stream
 
 
 class FakeChain:
-    def __init__(self, client, settings) -> None:
+    def __init__(self, client, settings, auth=None) -> None:
         self.ref = parse_video_url("https://www.bilibili.com/video/BV1GJ411x7h7")
 
     async def resolve_url(self, raw: str):
@@ -158,3 +158,61 @@ def test_cross_origin_mutation_rejected(client: TestClient) -> None:
         headers={"origin": "http://127.0.0.1:8765"},
     )
     assert allowed.status_code == 200
+
+
+def test_auth_endpoints(client: TestClient) -> None:
+    import httpx
+    import respx
+
+    initial = client.get("/api/auth")
+    assert initial.status_code == 200
+    assert initial.json()["auth"]["configured"] is False
+    assert "cookie" not in initial.json()["auth"]
+
+    nav = "https://api.bilibili.com/x/web-interface/nav"
+    with respx.mock(assert_all_called=False) as router:
+        router.get(nav).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "isLogin": True,
+                        "mid": 42,
+                        "uname": "登录用户",
+                        "vipStatus": 0,
+                        "level_info": {"current_level": 3},
+                    },
+                },
+            )
+        )
+        logged_in = client.post("/api/auth/cookie", json={"cookie": "sess-secret"})
+    assert logged_in.status_code == 200
+    body = logged_in.json()["auth"]
+    assert body["configured"] is True
+    assert body["account"]["uname"] == "登录用户"
+    assert "sess-secret" not in logged_in.text
+
+    meta = client.get("/api/meta").json()
+    assert meta["cookie_configured"] is True
+    assert meta["auth"]["source"] == "stored"
+
+    logged_out = client.delete("/api/auth")
+    assert logged_out.status_code == 200
+    assert logged_out.json()["auth"]["configured"] is False
+    assert not Path(logged_out.json()["auth"]["storage_path"]).exists()
+
+
+def test_auth_invalid_cookie_error_does_not_echo_input(client: TestClient) -> None:
+    import httpx
+    import respx
+
+    secret = "this-is-not-a-cookie-secret"
+    with respx.mock(assert_all_called=False) as router:
+        router.get("https://api.bilibili.com/x/web-interface/nav").mock(
+            return_value=httpx.Response(200, json={"code": -101, "data": {"isLogin": False}})
+        )
+        response = client.post("/api/auth/cookie", json={"cookie": secret})
+    assert response.status_code == 400
+    assert secret not in response.text
+    assert response.json()["code"] == "invalid_cookie"

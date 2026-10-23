@@ -55,6 +55,21 @@ class ConfigError(AppError):
     status = 500
 
 
+class AuthError(AppError):
+    code = "auth_error"
+    status = 400
+
+
+class AuthNotConfiguredError(AuthError):
+    code = "auth_not_configured"
+    status = 400
+
+
+class InvalidCookieError(AuthError):
+    code = "invalid_cookie"
+    status = 400
+
+
 class UnsupportedUrlError(AppError):
     code = "unsupported_url"
     status = 400

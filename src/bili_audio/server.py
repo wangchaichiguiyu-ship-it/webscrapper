@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import APP_NAME, __version__
+from .auth import AuthStore
 from .config import FORMAT_META, Settings
 from .converter import ffmpeg_version
 from .errors import AppError, TaskNotFoundError
@@ -47,7 +48,16 @@ class RevealPayload(BaseModel):
     task_id: str | None = None
 
 
-def _meta(settings: Settings, ffmpeg: str | None, started_at: float) -> dict[str, Any]:
+class CookiePayload(BaseModel):
+    cookie: str = Field(min_length=1, max_length=8192)
+
+
+def _meta(
+    settings: Settings,
+    ffmpeg: str | None,
+    started_at: float,
+    auth: AuthStore,
+) -> dict[str, Any]:
     try:
         free = shutil.disk_usage(settings.output_dir).free
     except OSError:
@@ -58,9 +68,12 @@ def _meta(settings: Settings, ffmpeg: str | None, started_at: float) -> dict[str
         "output_dir": str(settings.output_dir),
         "ffmpeg_ok": bool(ffmpeg),
         "ffmpeg_version": ffmpeg or "",
-        "cookie_configured": settings.has_cookie,
+        "cookie_configured": auth.configured,
+        "auth": auth.public_state(),
         "extractor_chain": ["bilibili_api", "yt_dlp"],
         "max_concurrent": settings.max_concurrent,
+        "safe_mode": settings.safe_mode,
+        "task_interval": settings.task_interval,
         "max_tasks": settings.max_tasks,
         "default_format": settings.default_format,
         "formats": list(FORMAT_META),
@@ -160,12 +173,15 @@ def create_app(settings: Settings) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.validate()
         settings.ensure_dirs()
-        client = create_client(settings)
-        chain = ExtractorChain(client, settings)
+        auth = AuthStore(settings)
+        client = create_client(settings, with_cookies=False)
+        auth.apply_to_client(client)
+        chain = ExtractorChain(client, settings, auth)
         manager = TaskManager(settings, chain, EventBus())
         app.state.settings = settings
         app.state.client = client
         app.state.chain = chain
+        app.state.auth = auth
         app.state.manager = manager
         app.state.started_at = started_at
         await manager.start()
@@ -240,11 +256,16 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        # Never echo request bodies: a validation error must not leak a cookie.
+        safe_errors = [
+            {key: value for key, value in error.items() if key not in {"input", "ctx", "url"}}
+            for error in exc.errors()[:5]
+        ]
         return JSONResponse(
             {
                 "detail": "请求参数不合法",
                 "code": "validation_error",
-                "errors": exc.errors()[:5],
+                "errors": safe_errors,
             },
             status_code=422,
         )
@@ -256,7 +277,7 @@ def create_app(settings: Settings) -> FastAPI:
     # -- API ---------------------------------------------------------------
     @app.get("/api/meta")
     async def get_meta() -> dict[str, Any]:
-        return _meta(settings, ffmpeg_desc, started_at)
+        return _meta(settings, ffmpeg_desc, started_at, app.state.auth)
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
@@ -268,6 +289,29 @@ def create_app(settings: Settings) -> FastAPI:
             "ffmpeg_ok": bool(ffmpeg_desc),
             "tasks": snapshot["stats"],
         }
+
+    @app.get("/api/auth")
+    async def get_auth() -> dict[str, Any]:
+        auth: AuthStore = app.state.auth
+        return {"auth": auth.public_state()}
+
+    @app.post("/api/auth/cookie")
+    async def login_with_cookie(payload: CookiePayload) -> dict[str, Any]:
+        auth: AuthStore = app.state.auth
+        state = await auth.login(app.state.client, payload.cookie)
+        return {"auth": state}
+
+    @app.post("/api/auth/check")
+    async def check_auth() -> dict[str, Any]:
+        auth: AuthStore = app.state.auth
+        state = await auth.check(app.state.client)
+        return {"auth": state}
+
+    @app.delete("/api/auth")
+    async def logout_auth() -> dict[str, Any]:
+        auth: AuthStore = app.state.auth
+        state = await auth.logout(app.state.client)
+        return {"auth": state}
 
     @app.get("/api/tasks")
     async def list_tasks() -> dict[str, Any]:

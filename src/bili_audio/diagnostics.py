@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 
 from . import APP_NAME, __version__
+from .auth import AuthStore
 from .config import PROJECT_ROOT, Settings
 from .converter import ffmpeg_version
 from .errors import AppError
@@ -137,14 +138,25 @@ async def run_doctor(settings: Settings, *, url: str | None = None, offline: boo
     except OSError as exc:
         checks.append(Check("输出目录", False, f"不可写：{exc}", "error"))
 
+    auth = AuthStore(settings)
+    source_labels = {
+        "stored": "界面保存的本地配置",
+        "env": "环境变量/.env",
+        "file": "浏览器导出的 cookies.txt",
+        "none": "未配置",
+    }
+    account = auth.account
+    account_text = f"账号 {account.uname} (mid={account.mid})" if account else "尚未验证账号"
     checks.append(
         Check(
-            "登录 Cookie",
+            "账号 Cookie",
             True,
-            "已配置（可访问账号有权的高音质音轨）"
-            if settings.has_cookie
-            else "未配置；Hi-Res FLAC / Dolby 可能不可见（不一定是故障）",
-            "info" if settings.has_cookie else "warning",
+            (
+                f"已配置（{source_labels.get(auth.source, auth.source)}）· {account_text}"
+                if auth.configured
+                else "未配置；Hi-Res FLAC / Dolby 可能不可见（不一定是故障）"
+            ),
+            "info" if auth.configured else "warning",
         )
     )
 
@@ -167,15 +179,35 @@ async def run_doctor(settings: Settings, *, url: str | None = None, offline: boo
     if offline:
         checks.append(Check("在线接口", True, "已跳过（--offline）", "info"))
     else:
-        await _live_check(url or DEFAULT_SAMPLE, settings, checks)
+        client = create_client(settings, with_cookies=False)
+        auth.apply_to_client(client)
+        chain = ExtractorChain(client, settings, auth)
+        try:
+            if auth.configured:
+                try:
+                    state = await auth.check(client)
+                    name = (state.get("account") or {}).get("uname") or "未知账号"
+                    checks.append(
+                        Check("账号登录校验", True, f"Cookie 有效 · 当前账号 {name}", "info")
+                    )
+                except AppError as exc:
+                    checks.append(
+                        Check("账号登录校验", False, exc.user_message, "warning")
+                    )
+            await _live_check(url or DEFAULT_SAMPLE, checks, client, chain)
+        finally:
+            await client.aclose()
 
     critical = [c for c in checks if c.severity == "error" and not c.ok]
     return checks, (0 if not critical else 1)
 
 
-async def _live_check(url: str, settings: Settings, checks: list[Check]) -> None:
-    client = create_client(settings)
-    chain = ExtractorChain(client, settings)
+async def _live_check(
+    url: str,
+    checks: list[Check],
+    client: httpx.AsyncClient,
+    chain: ExtractorChain,
+) -> None:
     try:
         ref = await chain.resolve_url(url)
         result = await chain.extract(ref)
@@ -230,9 +262,6 @@ async def _live_check(url: str, settings: Settings, checks: list[Check]) -> None
                 severity,
             )
         )
-    finally:
-        await client.aclose()
-
 
 def print_report(checks: list[Check], *, as_json: bool = False) -> None:
     if as_json:

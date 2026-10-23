@@ -4,6 +4,8 @@
 
 - 图形化 Web UI（FastAPI + 原生 HTML/CSS/JS，无前端构建、无 Electron、无 CDN）
 - 粘贴 → Enter 入队；支持一次粘贴多条链接、短链、BV 号
+- **UI 内账号登录**：粘贴自己的 SESSDATA 验证并保存（0600），获取账号有权访问的 Hi-Res / Dolby 音轨
+- **账号安全模式**：默认单任务 + 随机任务间隔，只读元数据接口，不自动登录、不保存密码
 - 下载 / 转码实时进度、速度、ETA；SSE 推送 + 轮询兜底
 - 官方 Bilibili API 主解析 + yt-dlp 兼容兜底，接口变化时不会直接瘫痪
 - 默认 FLAC 无损封装；可选 WAV（PCM）与“原始音轨不转码”
@@ -44,23 +46,37 @@ PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple ./setup.sh
 
 首次启动会创建 `output/`（可在 `.env` 中改路径）。Ctrl+C 停止服务，最多等待当前任务安全退出。
 
-### 登录 Cookie（可选，但想要 Hi-Res 时通常必需）
+### 账号登录（推荐，无需改配置文件）
 
-B 站对部分高音质音轨做账号校验。任选一种方式配置，**不要把 Cookie 提交到 Git 或发给别人**：
+![账号登录与安全提示](docs/preview-auth.jpg)
+
+想用自己账号下载 Hi-Res FLAC / Dolby，直接在 UI 里登录即可：
+
+1. 启动后点右上角 **“登录账号”**。
+2. 在浏览器打开并登录 `bilibili.com` → 开发者工具 → Application/Storage → Cookies → `bilibili.com` → 复制 **`SESSDATA`** 的值。
+3. 粘贴到弹窗（也接受完整 Cookie 头），点 **“验证并登录”**。验证通过后会显示用户名、UID、会员/等级状态。
+
+安全设计：
+
+- **不处理密码、不自动登录、不模拟扫码**；只接受你浏览器里已有的登录会话。
+- 只把 Cookie 发给 `*.bilibili.com` 的 API（`view` / `playurl` / 登录校验），**不会**发给视频 CDN 域名。
+- UI 保存的 Cookie 写入 `~/.config/bilisonic/cookie.json`，目录 `0700`、文件 `0600`，不会出现在 API 响应、日志、任务记录或 Git 中。**只保留 SESSDATA（以及匿名 buvid），主动丢弃 bili_jct 等写操作凭据**。文件是**明文**（依赖系统账户权限保护），建议开启 FileVault，不要分享该文件。
+- 退出登录会删除该文件；如果你用 `.env`/cookies.txt 配置，退出按钮会退回到环境配置。
+- 默认开启**安全模式**：一次只处理一个任务，任务之间随机间隔 ≥ 3 秒；每次任务只用账号请求 2 次元数据，其余是 CDN 下载。
+
+也可继续用环境变量/文件（适合无界面、自动化场景，UI Cookie 优先于它们）：
 
 ```bash
 cp .env.example .env
-# 方式 A：只填 SESSDATA（推荐，权限最小）
+# 方式 A：只填 SESSDATA（权限最小）
 BILI_SESSDATA=你的SESSDATA
-
-# 方式 B：完整 Cookie 头（从浏览器 DevTools → Application → Cookies 复制）
+# 方式 B：完整 Cookie 头
 BILI_COOKIE=SESSDATA=...; bili_jct=...; buvid3=...
-
 # 方式 C：浏览器导出的 Netscape cookies.txt
 BILI_COOKIE_FILE=/Users/you/cookies.txt
 ```
 
-修改后重启服务。UI 顶部会显示“Cookie 已配置 / 访客模式”。Cookie 仅保存在进程内存中，不会写入任务记录，也不会发送给 B 站 CDN 域名。
+**关于封号风险（务必阅读）**：任何第三方客户端/自动化工具都**无法承诺“零封号风险”**，B 站用户协议和风控策略也不在本项目控制范围内。本项目通过“不自动登录、只读接口、单任务、随机间隔、低频请求、不共享 Cookie”尽量降低风险，但最终选择与风险由你自行承担。请只用自己有权使用的账号、低频下载、遵守 B 站协议；不要用大号批量抓取，不要分享 Cookie。想进一步降险可把 `BILI_TASK_INTERVAL` 调到 5–10 秒。
 
 ---
 
@@ -130,10 +146,13 @@ make fixtures                     # 刷新脱敏接口 fixture（维护用）
 | `BILI_HOST` | `127.0.0.1` | 监听地址；改成 `0.0.0.0` 前请理解无认证风险 |
 | `BILI_PORT` | `8765` | 端口；被占用时自动顺延 |
 | `BILI_AUDIO_FORMAT` | `flac` | 默认格式：`flac` / `wav` / `m4a` |
-| `BILI_MAX_CONCURRENT` | `1` | 同时处理任务数（1–4）；Air 建议 1 |
+| `BILI_MAX_CONCURRENT` | `1` | 同时处理任务数（1–4）；安全模式开启时强制为 1 |
 | `BILI_MAX_TASKS` | `300` | 内存中任务记录上限 |
 | `BILI_DOWNLOAD_RETRIES` | `3` | 单个候选 URL 的重试次数；之后才考虑降级 |
-| `BILI_SESSDATA` / `BILI_COOKIE` / `BILI_COOKIE_FILE` | 空 | 登录凭据（见上） |
+| `BILI_SAFE_MODE` | `true` | 安全模式：强制单任务 + 任务间随机间隔；关闭会增加账号风险 |
+| `BILI_TASK_INTERVAL` | `3` | 安全模式下任务起始间隔（秒，实际再加 0–1.2s 抖动） |
+| `BILI_CONFIG_DIR` | `~/.config/bilisonic` | UI 登录 Cookie / 本地配置目录 |
+| `BILI_SESSDATA` / `BILI_COOKIE` / `BILI_COOKIE_FILE` | 空 | 环境/文件方式的登录凭据（见上） |
 | `BILI_PROXY` | 空 | 可选 HTTP 代理，如 `http://127.0.0.1:7890` |
 | `BILI_FFMPEG` / `BILI_FFPROBE` | `ffmpeg` / `ffprobe` | 自定义二进制路径 |
 | `BILI_CONVERT_TIMEOUT` | `900` | 单次转换超时（秒） |
@@ -149,6 +168,7 @@ make fixtures                     # 刷新脱敏接口 fixture（维护用）
 web/                         原生 HTML / CSS / JS（无构建步骤）
 src/bili_audio/
   __main__.py                CLI：serve / doctor
+  auth.py                    账号 Cookie 校验、0600 本地存储、动态登录态
   server.py                  FastAPI 路由、SSE、静态 UI、安全响应头
   tasks.py                   内存队列 + 任务状态机 + 流水线编排 + 事件总线
   extractors/
@@ -172,8 +192,12 @@ scripts/update_fixtures.py   刷新 fixture 的维护脚本
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/meta` | 版本、输出目录、ffmpeg、Cookie、格式、并发等 |
+| GET | `/api/meta` | 版本、输出目录、ffmpeg、账号状态、安全模式、格式、并发等 |
 | GET | `/api/tasks` | `{tasks, stats}` |
+| GET | `/api/auth` | 当前账号状态（不含 Cookie 值） |
+| POST | `/api/auth/cookie` | 验证并保存 SESSDATA / Cookie |
+| POST | `/api/auth/check` | 重新校验当前 Cookie |
+| DELETE | `/api/auth` | 删除 UI 保存的 Cookie |
 | POST | `/api/tasks` | `{url, format?}` → `{task}`（201） |
 | GET | `/api/tasks/{id}` | 单任务 |
 | DELETE | `/api/tasks/{id}` | 移除记录（运行中 409） |
@@ -215,7 +239,9 @@ pytest -q && ./run.sh doctor --offline
 |---|---|
 | UI 打不开 / 端口被占用 | 终端看实际端口（自动顺延）；或 `./run.sh --port 9000` |
 | “ffmpeg 未就绪” | `brew install ffmpeg`，或在 `.env` 指定 `BILI_FFMPEG` |
-| 只有 64K/132K，没有 192K | 未登录时 B 站可能降级；配置 `BILI_SESSDATA` 后重试 |
+| 只有 64K/132K，没有 192K | 未登录时 B 站可能降级；在 UI 里登录账号后重试 |
+| 登录提示“Cookie 无效或已过期” | 重新登录 B 站并复制最新 SESSDATA；不要在隐私模式关闭后使用旧 Cookie |
+| 登录提示 412 / 风控 | 停止重复点击，等几分钟再试；不要频繁登录/退出 |
 | 没有 Hi-Res FLAC | 视频本身没有 Hi-Res，或账号无权限；不是所有视频都有无损 |
 | 412 / 风控校验失败 | 稍后重试；配置 Cookie；避免频繁批量请求 |
 | 浏览器报 403 “非法的 Host 请求头” | 请用 `http://127.0.0.1:8765` 或 `http://localhost:8765` 访问，不要用自定义域名反代到本机 |
@@ -231,7 +257,8 @@ pytest -q && ./run.sh doctor --offline
 - 服务默认只绑定 `127.0.0.1`，没有登录认证。**不要**在不可信网络把 `BILI_HOST` 改为 `0.0.0.0`。
 - 校验 `Host` 与跨站 `Origin`，阻止 DNS rebinding / 网页 CSRF（`curl` 等本机脚本不受影响）。
 - 只接受 B 站域名，URL 白名单防止被当作任意 URL 代理（SSRF）。
-- Cookie 只存内存；日志会对 Cookie 值脱敏；媒体 CDN 请求不带 Cookie。
+- UI 登录的 Cookie 保存在 `~/.config/bilisonic/cookie.json`（0600），可用“退出登录”删除；环境变量方式不落盘。日志会对 Cookie 值脱敏，媒体 CDN 请求不带 Cookie。
+- 账号安全模式默认开启（单任务 + 随机间隔）；关闭 `BILI_SAFE_MODE` 会提高账号被风控的概率。第三方工具无法保证零风险。
 - 文件名经过清洗且限制 UTF-8 字节长度，防止路径穿越和 macOS 文件名超限。
 - 队列状态在内存中，重启后清空；已生成文件保留。若需要长期历史，可按 README 的 API 自行落库。
 - 仅支持 B 站；不提供去 DRM、破解付费/地区限制的能力。请遵守 B 站条款和版权规定，仅下载你有权保存的内容。

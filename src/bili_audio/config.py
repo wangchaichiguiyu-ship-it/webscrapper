@@ -1,8 +1,9 @@
 """Runtime configuration.
 
 Precedence: CLI arguments > environment variables > ``.env`` > defaults.
-Secrets (Bilibili cookies) are only ever held in memory and are never included
-in API responses or logs.
+A login cookie may come from the environment or from the UI-managed local store
+(``~/.config/bilisonic``, file mode 0600). It is never included in API responses,
+logs or media CDN requests. See ``auth.py``.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ WEB_DIR = PROJECT_ROOT / "web"
 DEFAULT_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/125.0.0.0 Safari/537.36"
+    "Chrome/142.0.0.0 Safari/537.36"
 )
 SUPPORTED_FORMATS = ("flac", "wav", "m4a")
 FORMAT_META = (
@@ -54,6 +55,23 @@ def _env_int(name: str, default: int) -> int:
         return int(raw)
     except ValueError as exc:
         raise ConfigError(f"{name} 必须是整数，当前值：{raw!r}") from exc
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ConfigError(f"{name} 必须是数字，当前值：{raw!r}") from exc
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on", "y"}
 
 
 def load_dotenv(path: Path | None = None) -> None:
@@ -126,6 +144,15 @@ class Settings:
     ffprobe: str = "ffprobe"
     cookie: str = ""
     cookie_file: Path | None = None
+    config_dir: Path = field(
+        default_factory=lambda: Path(os.environ.get("BILI_CONFIG_DIR", "")).expanduser()
+        if os.environ.get("BILI_CONFIG_DIR")
+        else Path.home() / ".config" / "bilisonic"
+    )
+    # Safe mode is the default because most users download with a real account.
+    # It forces sequential work and a randomized pause between tasks.
+    safe_mode: bool = True
+    task_interval: float = 3.0
     user_agent: str = DEFAULT_UA
     proxy: str | None = None
     log_level: str = "INFO"
@@ -188,6 +215,14 @@ class Settings:
             raise ConfigError("端口号必须在 1 到 65535 之间")
         if self.cookie_file and not self.cookie_file.is_file():
             raise ConfigError(f"Cookie 文件不存在：{self.cookie_file}")
+        if self.task_interval < 0 or self.task_interval > 60:
+            raise ConfigError("BILI_TASK_INTERVAL 必须在 0 到 60 秒之间")
+        if self.safe_mode:
+            # Conservative defaults for account safety: one API/download task at
+            # a time and a human-like gap between tasks.
+            object.__setattr__(self, "max_concurrent", 1)
+            if self.task_interval < 1.5:
+                object.__setattr__(self, "task_interval", 1.5)
         object.__setattr__(self, "ffmpeg", _find_binary(self.ffmpeg))
         object.__setattr__(self, "ffprobe", _find_binary(self.ffprobe))
 
@@ -234,6 +269,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
 
     cookie_file_raw = env.get("BILI_COOKIE_FILE", "").strip()
     cookie_file = Path(cookie_file_raw).expanduser() if cookie_file_raw else None
+    config_dir_raw = env.get("BILI_CONFIG_DIR", "").strip()
+    config_dir = (
+        Path(config_dir_raw).expanduser()
+        if config_dir_raw
+        else Path.home() / ".config" / "bilisonic"
+    )
 
     settings = Settings(
         output_dir=output_dir,
@@ -246,6 +287,9 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         ffprobe=env.get("BILI_FFPROBE", "ffprobe").strip() or "ffprobe",
         cookie=cookie_header_from_env(),
         cookie_file=cookie_file,
+        config_dir=config_dir,
+        safe_mode=_env_bool("BILI_SAFE_MODE", True),
+        task_interval=_env_float("BILI_TASK_INTERVAL", 3.0),
         user_agent=env.get("BILI_USER_AGENT", DEFAULT_UA).strip() or DEFAULT_UA,
         proxy=(env.get("BILI_PROXY", "").strip() or None),
         log_level=(env.get("BILI_LOG_LEVEL", "INFO").strip() or "INFO").upper(),

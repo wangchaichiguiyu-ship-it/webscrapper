@@ -42,6 +42,34 @@ def create_client(settings: Settings, *, with_cookies: bool = True) -> httpx.Asy
     return client
 
 
+def parse_cookie_header(header: str) -> dict[str, str]:
+    cookies: dict[str, str] = {}
+    for chunk in (header or "").split(";"):
+        name, sep, value = chunk.strip().partition("=")
+        if sep and name.strip():
+            cookies[name.strip()] = value.strip()
+    return cookies
+
+
+def clear_bilibili_cookies(client: httpx.AsyncClient) -> None:
+    try:
+        for cookie in list(client.cookies.jar):
+            if "bilibili.com" in (cookie.domain or ""):
+                client.cookies.jar.clear(cookie.domain, cookie.path, cookie.name)
+    except Exception:
+        logger.debug("Could not clear Bilibili cookies", exc_info=True)
+
+
+def apply_cookie_header(client: httpx.AsyncClient, header: str) -> None:
+    """Replace Bilibili cookies on the client with an explicit Cookie header."""
+    clear_bilibili_cookies(client)
+    for name, value in parse_cookie_header(header).items():
+        try:
+            client.cookies.set(name, value, domain=".bilibili.com", path="/")
+        except (CookieError, ValueError):
+            logger.debug("Skipping invalid cookie name")
+
+
 def apply_bilibili_cookies(client: httpx.AsyncClient, settings: Settings) -> None:
     try:
         cookies = settings.cookie_jar

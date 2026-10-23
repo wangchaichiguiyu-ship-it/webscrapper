@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import time
 from collections import OrderedDict
 from contextlib import suppress
@@ -111,6 +112,7 @@ class TaskManager:
         self._reserved_paths: set[str] = set()
         self._last_publish: dict[str, float] = {}
         self._speed_state: dict[str, tuple[float, int, float]] = {}
+        self._last_task_started = 0.0
         self._stopping = False
 
     # -- lifecycle ----------------------------------------------------------
@@ -283,6 +285,12 @@ class TaskManager:
                 task = self.tasks.get(task_id)
                 if task is None or task.status != STATUS_QUEUED:
                     continue
+                if self.settings.safe_mode and self._last_task_started:
+                    interval = self.settings.task_interval + random.uniform(0, 1.2)
+                    elapsed = time.monotonic() - self._last_task_started
+                    if elapsed < interval:
+                        await asyncio.sleep(interval - elapsed)
+                self._last_task_started = time.monotonic()
                 await self._run_task(task)
             except asyncio.CancelledError:
                 raise

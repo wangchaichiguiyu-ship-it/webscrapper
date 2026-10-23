@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from ..auth import AuthStore
 from ..config import Settings
 from ..errors import AppError, InvalidUrlError, SchemaChangedError, UpstreamError
 from ..models import MediaInfo
@@ -38,11 +39,17 @@ class ExtractResult:
 
 
 class ExtractorChain:
-    def __init__(self, client: httpx.AsyncClient, settings: Settings) -> None:
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        settings: Settings,
+        auth: AuthStore | None = None,
+    ) -> None:
         self.client = client
         self.settings = settings
-        self.primary = BilibiliApiExtractor(client, settings)
-        self.fallback = YtDlpExtractor(settings)
+        self.auth = auth
+        self.primary = BilibiliApiExtractor(client, settings, auth)
+        self.fallback = YtDlpExtractor(settings, auth)
 
     async def resolve_url(self, raw_input: str) -> VideoRef:
         """Extract one URL, resolve b23.tv redirects, and parse a VideoRef."""

@@ -87,6 +87,11 @@ def _print_banner(settings: Settings) -> None:
     print(f"  输出目录  {settings.output_dir}")
     print(f"  ffmpeg   {ffmpeg or '未找到（转换会失败，请安装 ffmpeg）'}")
     print(f"  格式/并发 默认 {settings.default_format.upper()} · {settings.max_concurrent} 个任务")
+    if settings.safe_mode:
+        print(
+            f"  账号安全 安全模式：单任务 · 任务间隔约 {settings.task_interval:.1f}s+"
+            "（可在 .env 用 BILI_SAFE_MODE=false 关闭，但不建议）"
+        )
     print("  关闭服务  Ctrl+C")
     if not loopback:
         print("\n  ⚠️  警告：当前绑定到非本机地址，界面没有认证，请只在可信网络使用。")
@@ -164,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
         return code
 
     settings = _build_settings(args)
+    if settings.safe_mode and getattr(args, "concurrency", None) and args.concurrency > 1:
+        print("安全模式已开启：--concurrency 将被强制为 1（可用 BILI_SAFE_MODE=false 关闭，但不建议）。")
     settings = _choose_port(settings)
     _configure_logging(settings.log_level)
     _print_banner(settings)

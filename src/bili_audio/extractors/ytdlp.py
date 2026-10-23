@@ -15,6 +15,7 @@ import logging
 import re
 from typing import Any
 
+from ..auth import AuthStore
 from ..config import Settings
 from ..errors import SchemaChangedError, UpstreamError
 from ..http_client import safe_http_headers
@@ -121,7 +122,7 @@ def _parse_entry(entry: dict[str, Any], settings: Settings) -> AudioStream | Non
     )
 
 
-def _extract_sync(url: str, settings: Settings) -> dict[str, Any]:
+def _extract_sync(url: str, settings: Settings, cookie: str = "") -> dict[str, Any]:
     try:
         from yt_dlp import YoutubeDL
         from yt_dlp.utils import DownloadError
@@ -136,8 +137,8 @@ def _extract_sync(url: str, settings: Settings) -> dict[str, Any]:
         "User-Agent": settings.user_agent,
         "Referer": "https://www.bilibili.com/",
     }
-    if settings.cookie:
-        headers["Cookie"] = settings.cookie
+    if cookie:
+        headers["Cookie"] = cookie
     options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
@@ -151,7 +152,7 @@ def _extract_sync(url: str, settings: Settings) -> dict[str, Any]:
         "http_headers": headers,
         "nocheckcertificate": False,
     }
-    if settings.cookie_file:
+    if settings.cookie_file and not cookie:
         options["cookiefile"] = str(settings.cookie_file)
     try:
         with YoutubeDL(options) as ydl:
@@ -174,11 +175,15 @@ def _extract_sync(url: str, settings: Settings) -> dict[str, Any]:
 class YtDlpExtractor:
     name = "yt_dlp"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, auth: AuthStore | None = None) -> None:
         self.settings = settings
+        self.auth = auth
 
     async def extract(self, ref: VideoRef) -> MediaInfo:
-        info = await asyncio.to_thread(_extract_sync, ref.canonical_url, self.settings)
+        cookie = self.auth.cookie if self.auth is not None else self.settings.cookie
+        info = await asyncio.to_thread(
+            _extract_sync, ref.canonical_url, self.settings, cookie
+        )
         warnings: list[str] = []
 
         if info.get("_type") == "playlist":

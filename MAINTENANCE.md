@@ -32,16 +32,36 @@ converter.py（ffmpeg 无损封装/转码）
 |---|---|---|
 | `doctor` 说 ffmpeg 未就绪 | 未安装/路径错 | `brew install ffmpeg`；`.env` 设置 `BILI_FFMPEG` |
 | `doctor` 在线接口失败，提示风控/412 | B 站风控、IP 异常、Cookie 缺失 | 稍后重试；配置 SESSDATA；不要高频批量请求 |
-| 官方 API 契约失败但 yt-dlp 成功 | B 站字段/接口变化 | 更新 yt-dlp 可先恢复；再按 §4 更新 parser/fixture |
-| 两个解析器都失败 | 页面类型不支持、地区限制、接口大改 | 先 `pip install -U yt-dlp`；抓取响应结构；按 §4 修 |
+| 官方 API 契约失败但 yt-dlp 成功 | B 站字段/接口变化 | 更新 yt-dlp 可先恢复；再按 §5 更新 parser/fixture |
+| 两个解析器都失败 | 页面类型不支持、地区限制、接口大改 | 先 `pip install -U yt-dlp`；抓取响应结构；按 §5 修 |
 | 任务失败 “媒体链接已过期/403” | CDN 链接过期，或并发下载冲突 | 重试；程序会重新解析；确认系统时间正确 |
-| 只有常规 AAC、flac 为 null | 视频没有 Hi-Res，或账号无权限 | 属正常；配置 Cookie 后再试，不要承诺用户一定有“无损” |
+| 只有常规 AAC、flac 为 null | 视频没有 Hi-Res，或账号无权限 | 属正常；在 UI 登录账号后再试，不要承诺用户一定有“无损” |
+| 登录提示 Cookie 无效/过期（B 站 code -101） | SESSDATA 过期或复制错误 | UI 重新登录；确认浏览器仍处于登录状态；不要复用旧 Cookie |
+| 登录后仍看不到 Hi-Res | 该视频没有 Hi-Res，或账号会员等级不足 | 属正常；检查视频本身与会员权益 |
 | FLAC 文件很大 | AAC 源被无损封装 | 正常；建议用户改选“原始音轨” |
 | 文件名异常/过长 | 新标题形态（含 emoji、超长中文） | `naming.py` + `test_naming.py` 已限制 200 UTF-8 字节；加样例 |
 | 队列重启后为空 | 设计如此（内存队列） | 如需持久化，按 README API 扩展；不要悄悄落库 Cookie/URL |
 | SSE 断开但下载继续 | 浏览器/代理断流 | 前端自动降级轮询；下载在后端继续 |
 
-## 3. 日常巡检（建议每周/每次依赖升级后）
+## 3. 账号登录与 Cookie 维护
+
+UI 登录链路（`auth.py` → `POST /api/auth/cookie`）只做三件事：
+
+1. 用用户提供的 Cookie 请求 `https://api.bilibili.com/x/web-interface/nav` 验证 `isLogin`；
+2. 只保留 `SESSDATA`（以及匿名 `buvid3/4`，如输入里带有），丢弃 `bili_jct` 等写操作凭据；验证通过后写入 `~/.config/bilisonic/cookie.json`（目录 0700、文件 0600），并更新内存中的 `AuthStore` 与共享 httpx cookie jar；
+3. 返回不含 Cookie 值的账号摘要（uname/mid/会员状态/来源）。
+
+维护要点：
+
+- **不要改成自动登录/扫码轮询/密码登录**。这些会增加凭据面与账号风险，且需要针对 passport 接口做长期维护；当前方案只复用浏览器已有会话，是刻意的最小化设计。
+- 登录校验依赖 `nav` 接口。若 B 站修改该接口：`POST /api/auth/cookie` 会报错但不会保存 Cookie；先更新 `auth.py:NAV_URL`/字段映射，补 `tests/test_auth.py` 的 mock。
+- Cookie 优先级：**UI 保存的 stored > `BILI_COOKIE`/`BILI_SESSDATA` > `BILI_COOKIE_FILE`**。UI 退出会删除 stored 并回退到环境配置；不要在没有提示的情况下改这个优先级。
+- 文件名/路径：`BILI_CONFIG_DIR` 可改配置目录；写文件使用 0600 临时文件 + `os.replace`，不要在日志、API、异常里输出 Cookie。
+- 失效处理：`-101` 表示未登录；412 表示风控。两者都不要自动重试/自动刷新。UI 展示“重新登录/稍后再试”即可。
+- 账号风险：任何第三方客户端都无法保证零风险。保持 `BILI_SAFE_MODE=true`（单任务 + 随机间隔）；不要在维护中为了“快”提高并发或缩短 `BILI_TASK_INTERVAL`，这会直接增加风控概率。
+- 不要记录账号 Cookie 到 Git、issue、截图；文档中的示例只能是占位符。`AuthStore.public_state()` 是唯一允许返回给前端的账号结构，审阅 PR 时重点检查它没有泄露 `cookie` 字段。
+
+## 4. 日常巡检（建议每周/每次依赖升级后）
 
 ```bash
 # 1) 离线回归（CI 必跑，不访问网络）
@@ -61,7 +81,7 @@ converter.py（ffmpeg 无损封装/转码）
 
 **基线记录**：每次升级前把 `doctor --json` 输出和当前 `pytest` 结果存档，变化更容易定位。
 
-## 4. 官方 API 变化时的修复流程（重点）
+## 5. 官方 API 变化时的修复流程（重点）
 
 ### Step 0：确认不是本机问题
 
@@ -129,7 +149,7 @@ git diff tests/fixtures/
 - [ ] 更新 `CHANGELOG`/README（如行为变化）
 - [ ] 依赖版本（尤其是 yt-dlp）在 README/提交中说明
 
-## 5. 依赖更新策略
+## 6. 依赖更新策略
 
 | 依赖 | 策略 | 原因 |
 |---|---|---|
@@ -141,14 +161,14 @@ git diff tests/fixtures/
 
 `pyproject.toml` 故意使用宽松上界；**不要**为了“可复现”把 yt-dlp 锁死在老版本——它承担了对抗 B 站变化的主要职责。若生产环境需要锁版本，请把 yt-dlp 单列为可热更新的部署项。
 
-## 6. 观测与日志
+## 7. 观测与日志
 
 - 终端日志按模块输出，HTTP 请求日志已降噪；任务失败会记录 `error code + 消息`，下载候选失败记录质量 id。
 - UI 的 warning 字段保留：降级、无 Cookie、无 Hi-Res 权限、flac 不提升音质等。
-- 建议排查顺序：UI `warnings/error` → 终端日志 → `doctor` → 手工 curl B 站 API（带相同 UA/Referer）→ fixture diff。
+- 建议排查顺序：UI `warnings/error` → 账号状态（`/api/auth`）→ 终端日志 → `doctor` → 手工 curl B 站 API（带相同 UA/Referer）→ fixture diff。
 - 不要把 SESSDATA 贴到 issue/聊天；日志中的 Cookie 已脱敏，但命令行历史仍需注意。
 
-## 7. 安全维护
+## 8. 安全维护
 
 - 只允许 B 站域名（`urls.py` 白名单）；新增域名必须同时改测试，防止 SSRF。
 - 媒体下载不带 Cookie；若未来 CDN 要求 Cookie，必须重新评估泄露面并限制域名。
@@ -158,8 +178,10 @@ git diff tests/fixtures/
 - 默认只监听 `127.0.0.1`；如果要远程访问，必须加认证/反代与 TLS，而不是改 host 了事。
 - `server.py` 中间件校验 `Host`（防 DNS rebinding）和写操作的 `Origin`（防跨站 POST）。修改访问方式或引入反向代理时，同步更新 `_host_is_allowed` 并补测试。
 - 日志安装了 `_RedactFilter`，即使未来代码误把 Cookie 放入日志也会被替换为 `***`；不要因此放松代码审查。
+- 账号 Cookie 属于高敏感数据：只允许存在 `AuthStore` 内存与 `~/.config/bilisonic/cookie.json`（0600）；新增 API/日志/异常时必须检查不会回显它。登录校验使用独立 httpx client，不要把 Cookie 写进共享默认 headers。
+- UI 的账号接口同样受 Host/Origin 中间件保护；新增登录相关 mutation 不要绕过。
 
-## 8. 扩展点
+## 9. 扩展点
 
 - **新增站点**：实现 `Extractor` 风格的类，接入 `ExtractorChain`；保持“解析”和“下载/转码”分离。
 - **持久化历史**：可在 `TaskManager` 外围加 SQLite/JSON，但不要持久化 Cookie 和带签名的媒体 URL（会过期且敏感）。
@@ -167,15 +189,15 @@ git diff tests/fixtures/
 - **重试/调度策略**：当前固定 1 并发 + 线性队列；如需并发，注意 `_reserved_paths`、SSE 节流和 CPU 风扇。
 - **代理**：`BILI_PROXY` 已贯通 API 和下载客户端；新增请求时记得使用统一 `create_client`/`media_headers`。
 
-## 9. 已知限制
+## 10. 已知限制
 
 - 队列状态不持久化（设计取舍：无数据库、无敏感 URL 落盘）。
 - 番剧/PGC 走 yt-dlp，质量选项可能少于官方 API；付费/地区限制不会绕过。
-- 没有 WBI 签名实现；若 playurl 未来要求 WBI，优先依赖 yt-dlp 兜底或按 §4 增补。
+- 没有 WBI 签名实现；若 playurl 未来要求 WBI，优先依赖 yt-dlp 兜底或按 §5 增补。
 - 只支持 B 站；不包含视频下载，只抽音频。
 - 临时文件在 `output/.work/`；异常断电后启动会清理 24 小时前的残留，正在运行的实例不要并行启动第二个。
 
-## 10. 版本与变更记录
+## 11. 版本与变更记录
 
 - `0.1.0`：首个可用版本；官方 API + yt-dlp 双解析、FLAC/WAV/M4A、SSE UI、doctor、契约测试。
 - 版本号在 `src/bili_audio/__init__.py` 与 `pyproject.toml` 同步修改。

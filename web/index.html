@@ -30,6 +30,10 @@
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.3A8.2 8.2 0 0 1 9.7 4a8.4 8.4 0 1 0 10.3 10.3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M6.2 4.6c0-.9.7-1.6 1.6-1.6h5.6l4.4 4.4v12c0 .9-.7 1.6-1.6 1.6H7.8c-.9 0-1.6-.7-1.6-1.6V4.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.4 3v4.4h4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.8l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7L12 3.8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.6 15.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.1" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.4 19.3c.6-3.5 3.2-5.5 6.6-5.5s6 2 6.6 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.3 19.2 6v5.2c0 4.2-2.8 7.6-7.2 9.5-4.4-1.9-7.2-5.3-7.2-9.5V6L12 3.3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8.7 11.9 2.2 2.2 4.4-4.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8.3" cy="15.7" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m10.6 13.4 7.1-7.1m-2.2-.4 2.6 2.6m-5.1.4 2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.8 4.8H5.9c-.9 0-1.6.7-1.6 1.6v11.2c0 .9.7 1.6 1.6 1.6h8.9M14.2 8l4 4-4 4m4-4H9.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </svg>
 
   <div class="ambient" aria-hidden="true">
@@ -202,6 +206,91 @@
       <p class="footer-note">仅用于个人音频备份 · 请尊重创作者与版权方的权益</p>
     </div>
   </footer>
+
+
+  <div class="modal-backdrop" id="auth-modal" hidden>
+    <section class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-describedby="auth-desc">
+      <header class="auth-head">
+        <div class="auth-heading">
+          <span class="auth-head-icon" aria-hidden="true"><svg><use href="#i-user"></use></svg></span>
+          <div>
+            <h2 id="auth-title">账号登录</h2>
+            <p>可选 · 仅用于获取账号有权访问的音质</p>
+          </div>
+        </div>
+        <button class="icon-btn auth-close" id="auth-close" type="button" aria-label="关闭账号登录">
+          <svg aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </header>
+
+      <div class="auth-body">
+        <p class="auth-desc" id="auth-desc">使用你自己浏览器里的 B 站登录 Cookie，仅用于向 B 站 API 请求视频信息与音频列表。本工具不处理密码、不自动登录，也绝不会把 Cookie 发送给音频 CDN 或其他服务器。</p>
+
+        <section class="auth-account" id="auth-account" hidden aria-label="已配置账号">
+          <div class="account-card">
+            <span class="account-avatar" id="auth-avatar" aria-hidden="true">B</span>
+            <div class="account-main">
+              <p class="account-name" id="auth-uname"></p>
+              <p class="account-sub" id="auth-meta"></p>
+            </div>
+            <span class="account-pill" id="auth-source"></span>
+          </div>
+          <p class="account-checked" id="auth-checked"></p>
+          <div class="auth-actions">
+            <button class="btn soft" id="auth-recheck" type="button">
+              <svg aria-hidden="true"><use href="#i-retry"></use></svg><span class="btn-label">重新验证</span>
+            </button>
+            <button class="btn ghost danger" id="auth-logout" type="button" hidden>
+              <svg aria-hidden="true"><use href="#i-logout"></use></svg><span class="btn-label">退出登录</span>
+            </button>
+          </div>
+          <p class="auth-external" id="auth-external" hidden></p>
+        </section>
+
+        <div class="auth-divider"><span id="auth-form-label">Cookie 登录 / 更换</span></div>
+
+        <form class="auth-form" id="auth-form" novalidate>
+          <label class="auth-label" for="auth-cookie">SESSDATA 或完整 Cookie</label>
+          <input class="auth-input" id="auth-cookie" name="cookie" type="password" maxlength="8192"
+                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                 placeholder="粘贴 SESSDATA，或完整 Cookie 头" aria-describedby="auth-hint">
+          <p class="auth-hint" id="auth-hint">支持裸 SESSDATA 值或完整 Cookie。提交后输入框会立即清空；不会写入浏览器存储，也不会输出到控制台。</p>
+          <p class="auth-error" id="auth-error" role="alert" hidden></p>
+          <button class="btn primary auth-submit" id="auth-submit" type="submit" aria-busy="false">
+            <span class="btn-label">验证并登录</span>
+            <svg class="btn-icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            <span class="spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+
+        <aside class="auth-safety" aria-label="账号安全提示">
+          <span class="auth-safety-icon" aria-hidden="true"><svg><use href="#i-shield"></use></svg></span>
+          <div>
+            <p class="auth-safety-title">账号安全提示</p>
+            <p class="auth-safety-text" id="auth-safety-on">安全模式已开启：同一时间只处理 1 个任务，任务间隔至少 <span id="auth-interval">3</span> 秒。任何第三方客户端都无法绝对保证账号零封禁风险；请使用自己的账号、低频使用，并遵守 B 站用户协议。</p>
+            <p class="auth-safety-text" id="auth-safety-off" hidden>安全模式已关闭（BILI_SAFE_MODE=false）：并发和请求间隔不再受限，账号风险会明显上升。建议改回安全模式；任何第三方客户端都无法绝对保证账号零封禁风险。</p>
+          </div>
+        </aside>
+
+        <details class="auth-help">
+          <summary><svg aria-hidden="true"><use href="#i-key"></use></svg>如何获取 SESSDATA</summary>
+          <ol>
+            <li>在浏览器中登录 <strong>bilibili.com</strong>。</li>
+            <li>打开开发者工具 → <strong>Application / Storage</strong> → <strong>Cookies</strong> → <strong>https://www.bilibili.com</strong>。</li>
+            <li>找到 <code>SESSDATA</code>，复制它的值（也可以复制整行 Cookie），粘贴到上方输入框。</li>
+          </ol>
+          <p>Cookie 等同于登录凭据，请勿分享、截图或提交到 Git；不需要时可在上方退出登录。</p>
+        </details>
+
+        <div class="auth-storage" id="auth-storage" hidden>
+          <p class="auth-storage-line"><span>本地存储</span><code id="auth-storage-path"></code></p>
+          <p class="auth-storage-note">通过本界面登录时，只保留 SESSDATA 与匿名设备标识（丢弃 bili_jct 等写操作凭据），写入 0600 权限文件；仅随 B 站 API 请求发送，不会发送给音频 CDN。</p>
+        </div>
+
+        <p class="auth-footnote">Cookie 只保存在本机，仅随 API 请求发送给 B 站；本工具不保存 B 站密码。</p>
+      </div>
+    </section>
+  </div>
 
   <div class="player" id="player" hidden aria-label="音频播放器">
     <div class="player-text">
