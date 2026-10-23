@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BiliSonic · B 站音频捕手</title>
+  <meta name="description" content="BiliSonic 是运行在 macOS 本地的 Bilibili 音频下载器：粘贴链接，自动解析最高可用音质，下载并转码为 FLAC / WAV / M4A，全部处理都在本机完成。">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#080a0e">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#composer">跳到链接输入</a>
+
+  <svg class="svg-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.2 5.4c0-.9 1-1.4 1.7-.9l9 6.6c.6.4.6 1.4 0 1.8l-9 6.6c-.8.5-1.7 0-1.7-.9V5.4Z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.6" y="5" width="3.8" height="14" rx="1.6" fill="currentColor"/><rect x="13.6" y="5" width="3.8" height="14" rx="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.8v10.4m0 0 3.8-3.8M12 14.2l-3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.6 16.2v2.2a1.8 1.8 0 0 0 1.8 1.8h11.2a1.8 1.8 0 0 0 1.8-1.8v-2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.8 7.4c0-1 .8-1.8 1.8-1.8h4l2 2.4h6.8c1 0 1.8.8 1.8 1.8v7.4c0 1-.8 1.8-1.8 1.8H5.6c-1 0-1.8-.8-1.8-1.8V7.4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.4 12a7.4 7.4 0 1 1-2.2-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19.6 4.6v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.8 6.8h14.4M9.4 6.8V5.2c0-.7.6-1.2 1.2-1.2h2.8c.7 0 1.2.6 1.2 1.2v1.6M7.2 6.8l.7 11.2c0 .8.7 1.4 1.5 1.4h5.2c.8 0 1.5-.6 1.5-1.4l.7-11.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m8.4 12.2 2.5 2.5 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.4 21 19.6H3L12 4.4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.4v4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.8" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="8" r="1.05" fill="currentColor"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l2.6-2.6a3.6 3.6 0 0 0-5.1-5.1l-1.2 1.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-2.6 2.6a3.6 3.6 0 0 0 5.1 5.1l1.2-1.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4.8 12h14m0 0-5-5m5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5l1.5 1.5M17 17l1.5 1.5M18.5 5.5 17 7M7 17l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.3A8.2 8.2 0 0 1 9.7 4a8.4 8.4 0 1 0 10.3 10.3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6.2 4.6c0-.9.7-1.6 1.6-1.6h5.6l4.4 4.4v12c0 .9-.7 1.6-1.6 1.6H7.8c-.9 0-1.6-.7-1.6-1.6V4.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13.4 3v4.4h4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.8l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7L12 3.8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.6 15.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor"/></symbol>
+  </svg>
+
+  <div class="ambient" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logo-grad" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#ffd08a"/>
+                <stop offset=".5" stop-color="#ff9a5a"/>
+                <stop offset="1" stop-color="#5fe4d2"/>
+              </linearGradient>
+            </defs>
+            <rect x="1" y="1" width="38" height="38" rx="12" fill="none" stroke="url(#logo-grad)" stroke-opacity=".45"/>
+            <g fill="url(#logo-grad)">
+              <rect x="10" y="16.8" width="3.2" height="6.4" rx="1.6"/>
+              <rect x="15.6" y="12.4" width="3.2" height="15.2" rx="1.6"/>
+              <rect x="21.2" y="8.6" width="3.2" height="22.8" rx="1.6"/>
+              <rect x="26.8" y="13.6" width="3.2" height="12.8" rx="1.6"/>
+            </g>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">BiliSonic</span>
+          <span class="brand-sub">B 站音频捕手</span>
+        </span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-chips" id="status-chips" aria-label="运行状态">
+          <span class="status-chip loading"><span class="chip-label">正在连接本地服务…</span></span>
+        </div>
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="切换到浅色模式" title="切换主题">
+          <svg aria-hidden="true"><use href="#i-sun"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>本地运行 · 无损优先 · 音频不出本机</p>
+      <h1>把 B 站的声音，<br><span class="text-grad">无损地收进本地。</span></h1>
+      <p class="hero-copy">粘贴视频链接，自动解析最高可用音质，下载并转码为 FLAC / WAV / M4A。全部处理都在你的 Mac 上完成，音频只留在本地。</p>
+      <div class="hero-wave" aria-hidden="true">
+        <svg viewBox="0 0 560 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hero-grad" x1="0" y1="0" x2="560" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ffd08a" stop-opacity="0"/>
+              <stop offset=".25" stop-color="#ffb066"/>
+              <stop offset=".62" stop-color="#ff8a6a"/>
+              <stop offset=".9" stop-color="#5fe4d2"/>
+              <stop offset="1" stop-color="#5fe4d2" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0 80h18l7-26 9 44 8-62 9 78 8-40 7 22 9-48 8 66 8-30 7 12 9-34 8 52 8-26 7 16 9-42 8 58 8-32 7 18 9-46 8 62 8-28 7 14 9-38 8 50 8-22 7 12 9-36 8 54 8-30 7 20 9-44 8 60 8-26 7 14 9-40 8 48 8-20 7 10 9-26 8 34 8-16 9 12h40" fill="none" stroke="url(#hero-grad)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+          <path d="M0 104h24l7-16 9 30 8-44 9 56 8-26 7 16 9-30 8 44 8-20 7 8 9-22 8 34 8-18 7 12 9-28 8 38 8-20 7 12 9-30 8 40 8-18 7 10 9-24 8 32 8-14 7 8 9-22 8 34 8-18 7 14 9-26 8 36 8-16 7 8 9-22 8 28 8-12 7 6 9-16 8 20 8-10h40" fill="none" stroke="url(#hero-grad)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity=".35"/>
+        </svg>
+      </div>
+    </section>
+
+    <form class="composer panel" id="composer" novalidate tabindex="-1" aria-labelledby="composer-title">
+      <div class="composer-head">
+        <div class="composer-heading">
+          <h2 id="composer-title">URL 池</h2>
+          <p>粘贴一个或多个 Bilibili 视频链接，按 Enter 即刻入队。</p>
+        </div>
+      </div>
+      <div class="composer-field">
+        <textarea id="url-input" class="url-input" name="urls" rows="3" spellcheck="false" autocomplete="off" aria-label="Bilibili 视频链接，支持批量粘贴，按 Enter 加入下载队列" placeholder="粘贴 Bilibili 链接，空格或换行分隔…&#10;https://www.bilibili.com/video/BV1xx411c7mD&#10;支持 b23.tv 短链，也可以一次粘一整段文案。" aria-describedby="composer-hint"></textarea>
+        <div class="composer-field-foot">
+          <span class="composer-chip" aria-hidden="true"><svg><use href="#i-link"></use></svg>自动拆分 · 自动去重</span>
+        </div>
+      </div>
+      <div class="composer-bar">
+        <fieldset class="formats" id="format-group">
+          <legend class="sr-only">输出格式</legend>
+          <label class="format" title="FLAC 无损归档，推荐">
+            <input type="radio" name="output-format" value="flac" checked>
+            <span class="format-chip"><span class="format-name">FLAC 无损 <em class="format-rec">推荐</em></span><span class="format-desc">无损归档</span></span>
+          </label>
+          <label class="format" title="WAV 未压缩音频">
+            <input type="radio" name="output-format" value="wav">
+            <span class="format-chip"><span class="format-name">WAV</span><span class="format-desc">未压缩</span></span>
+          </label>
+          <label class="format" title="保留原始音轨，不二次转码；Hi-Res 保持 FLAC">
+            <input type="radio" name="output-format" value="m4a">
+            <span class="format-chip"><span class="format-name">原始音轨</span><span class="format-desc">M4A / FLAC</span></span>
+          </label>
+        </fieldset>
+        <div class="composer-submit">
+          <p class="composer-hint" id="composer-hint"><kbd>Enter</kbd> 入队<span class="hint-sep">·</span><kbd>Shift</kbd>+<kbd>Enter</kbd> 换行<span class="hint-sep">·</span><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> 入队</p>
+          <button class="btn primary" id="submit-btn" type="submit">
+            <span class="btn-label">加入下载队列</span>
+            <svg class="btn-icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            <span class="spinner" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <section class="queue" aria-labelledby="queue-title">
+      <div class="queue-head">
+        <div class="queue-heading">
+          <h2 id="queue-title">下载队列</h2>
+          <div class="queue-stats" id="stats"></div>
+        </div>
+        <div class="queue-tools">
+          <span class="conn" id="conn" data-state="connecting" title="实时更新状态">
+            <i class="conn-dot" aria-hidden="true"></i>
+            <span id="conn-label">连接中…</span>
+          </span>
+          <button class="btn ghost small" id="clear-btn" type="button" disabled title="清理已完成、失败与已取消的任务">
+            <svg aria-hidden="true"><use href="#i-trash"></use></svg>
+            <span>清理已结束</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="empty panel" id="empty-state">
+        <div class="empty-art">
+          <svg class="empty-svg" viewBox="0 0 200 140" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="empty-grad" x1="26" y1="22" x2="176" y2="120" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#ffd08a"/>
+                <stop offset=".5" stop-color="#ff9a5a"/>
+                <stop offset="1" stop-color="#5fe4d2"/>
+              </linearGradient>
+            </defs>
+            <g class="empty-vinyl">
+              <circle cx="82" cy="70" r="46" fill="none" stroke="currentColor" stroke-opacity=".14" stroke-width="1.2"/>
+              <circle cx="82" cy="70" r="34" fill="none" stroke="currentColor" stroke-opacity=".1" stroke-width="1"/>
+              <circle cx="82" cy="70" r="34" fill="none" stroke="url(#empty-grad)" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="2 7" stroke-linecap="round"/>
+              <circle cx="82" cy="70" r="21" fill="none" stroke="url(#empty-grad)" stroke-opacity=".7" stroke-width="1.4"/>
+              <circle cx="82" cy="70" r="5" fill="url(#empty-grad)"/>
+            </g>
+            <g stroke="url(#empty-grad)" stroke-width="1.7" stroke-linecap="round" fill="none">
+              <path d="M140 51c8 6 8 14 0 20" opacity=".85"/>
+              <path d="M149 43c13 10 13 26 0 36" opacity=".45"/>
+              <path d="M158 35c19 15 19 37 0 52" opacity=".25"/>
+            </g>
+            <g fill="url(#empty-grad)" opacity=".8">
+              <rect x="54" y="124" width="3" height="6" rx="1.5"/>
+              <rect x="60.5" y="121" width="3" height="9" rx="1.5"/>
+              <rect x="67" y="117" width="3" height="13" rx="1.5"/>
+              <rect x="73.5" y="121" width="3" height="9" rx="1.5"/>
+              <rect x="80" y="124" width="3" height="6" rx="1.5"/>
+            </g>
+          </svg>
+        </div>
+        <h3>队列空空的，等你投喂第一首</h3>
+        <p>把链接粘贴到上面的 URL 池，按 Enter 就开始解析。批量粘贴也没问题，会自动拆分并去重。</p>
+        <p class="empty-example">示例：https://www.bilibili.com/video/BV1xx411c7mD</p>
+      </div>
+
+      <div class="task-list" id="task-list" role="list" hidden></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-meta" id="footer-meta">正在读取运行信息…</p>
+      <p class="footer-note">仅用于个人音频备份 · 请尊重创作者与版权方的权益</p>
+    </div>
+  </footer>
+
+  <div class="player" id="player" hidden aria-label="音频播放器">
+    <div class="player-text">
+      <p class="player-title" id="player-title">—</p>
+      <audio id="audio" controls preload="metadata"></audio>
+    </div>
+    <button class="player-btn player-close" id="player-close" type="button" aria-label="关闭播放器"><svg aria-hidden="true"><use href="#i-x"></use></svg></button>
+  </div>
+
+
+  <template id="card-tpl">
+    <article class="task-card" role="listitem">
+      <div class="card-head">
+        <div class="card-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-label"></span>
+          <span class="status-pct"></span>
+          <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div class="card-badges">
+          <span class="badge badge-quality" hidden></span>
+          <span class="badge badge-format" hidden></span>
+        </div>
+      </div>
+      <h3 class="card-title"></h3>
+      <p class="card-meta"></p>
+      <div class="card-progress" hidden>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill"></div>
+        </div>
+        <div class="progress-meta">
+          <span class="p-bytes" hidden></span>
+          <span class="p-speed" hidden></span>
+          <span class="p-eta" hidden></span>
+        </div>
+      </div>
+      <div class="card-output" hidden>
+        <svg aria-hidden="true"><use href="#i-file"></use></svg>
+        <span class="out-name"></span>
+        <span class="out-size"></span>
+      </div>
+      <p class="card-error" hidden></p>
+      <p class="card-warnings" hidden></p>
+      <div class="card-actions"></div>
+    </article>
+  </template>
+
+  <template id="toast-tpl">
+    <div class="toast" role="status">
+      <svg class="toast-icon" aria-hidden="true"><use href="#i-info"></use></svg>
+      <div class="toast-body">
+        <p class="toast-title"></p>
+        <p class="toast-detail" hidden></p>
+      </div>
+      <button class="toast-close" type="button" aria-label="关闭提示"><svg aria-hidden="true"><use href="#i-x"></use></svg></button>
+    </div>
+  </template>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
