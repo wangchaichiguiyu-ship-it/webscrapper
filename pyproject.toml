@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bili-audio"
+version = "0.1.0"
+description = "BiliSonic - download the best available audio track from Bilibili videos"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Austin" }]
+dependencies = [
+    # Deliberately loose upper bounds: Bilibili changes often and yt-dlp is our
+    # compatibility fallback. See MAINTENANCE.md before pinning hard versions.
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "httpx>=0.27,<1",
+    "yt-dlp>=2025.1.15",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+]
+
+[project.scripts]
+biliaudio = "bili_audio.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
