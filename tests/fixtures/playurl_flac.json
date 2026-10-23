@@ -1,0 +1,58 @@
+{
+  "from": "local",
+  "quality": 127,
+  "format": "flac",
+  "timelength": 213000,
+  "accept_quality": [127, 112, 80, 64, 32, 16],
+  "accept_description": ["Hi-Res 无损", "杜比全景声", "1080P 高码率", "1080P 高清", "720P 高清", "480P 清晰"],
+  "dash": {
+    "duration": 213,
+    "audio": [
+      {
+        "id": 30280,
+        "baseUrl": "https://example.invalid/audio-30280.m4s",
+        "base_url": "https://example.invalid/audio-30280.m4s",
+        "backupUrl": ["https://example.invalid/backup-30280.m4s"],
+        "backup_url": ["https://example.invalid/backup-30280.m4s"],
+        "bandwidth": 203786,
+        "mimeType": "audio/mp4",
+        "mime_type": "audio/mp4",
+        "codecs": "mp4a.40.2",
+        "codecid": 0
+      }
+    ],
+    "dolby": {
+      "type": 1,
+      "audio": [
+        {
+          "id": 30250,
+          "baseUrl": "https://example.invalid/audio-30250.m4s",
+          "base_url": "https://example.invalid/audio-30250.m4s",
+          "backupUrl": ["https://example.invalid/backup-30250.m4s"],
+          "backup_url": ["https://example.invalid/backup-30250.m4s"],
+          "bandwidth": 448000,
+          "mimeType": "audio/mp4",
+          "mime_type": "audio/mp4",
+          "codecs": "ec-3",
+          "codecid": 0
+        }
+      ]
+    },
+    "flac": {
+      "display": true,
+      "audio": {
+        "id": 30251,
+        "baseUrl": "https://example.invalid/audio-30251.flac",
+        "base_url": "https://example.invalid/audio-30251.flac",
+        "backupUrl": ["https://example.invalid/backup-30251.flac"],
+        "backup_url": ["https://example.invalid/backup-30251.flac"],
+        "bandwidth": 1411200,
+        "mimeType": "audio/flac",
+        "mime_type": "audio/flac",
+        "codecs": "flac",
+        "codecid": 0
+      }
+    }
+  },
+  "durl": null
+}

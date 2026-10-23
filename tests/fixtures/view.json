@@ -1,0 +1,20 @@
+{
+  "bvid": "BV1GJ411x7h7",
+  "aid": 80433022,
+  "title": "【官方 MV】Never Gonna Give You Up - Rick Astley",
+  "pic": "https://example.invalid/cover.jpg",
+  "duration": 213,
+  "videos": 1,
+  "owner": {
+    "name": "索尼音乐中国",
+    "mid": 486906719
+  },
+  "pages": [
+    {
+      "cid": 137649199,
+      "page": 1,
+      "part": "Never Gonna Give You Up - Rick Astley",
+      "duration": 213
+    }
+  ]
+}

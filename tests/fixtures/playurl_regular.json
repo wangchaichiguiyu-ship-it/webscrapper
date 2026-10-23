@@ -1,0 +1,213 @@
+{
+  "from": "local",
+  "quality": 64,
+  "format": "flv720",
+  "timelength": 212393,
+  "accept_format": "hdflv2,flv,flv720,flv480,mp4",
+  "accept_description": [
+    "高清 1080P+",
+    "高清 1080P",
+    "高清 720P",
+    "清晰 480P",
+    "流畅 360P"
+  ],
+  "accept_quality": [
+    112,
+    80,
+    64,
+    32,
+    16
+  ],
+  "support_formats": [
+    {
+      "quality": 112,
+      "format": "hdflv2",
+      "new_description": "1080P 高码率",
+      "display_desc": "1080P",
+      "superscript": "高码率",
+      "codecs": [
+        "av01.0.08M.08.0.110.01.01.01.0",
+        "avc1.640032",
+        "hev1.1.6.L150.90"
+      ],
+      "can_watch_qn_reason": 0,
+      "limit_watch_reason": 0,
+      "report": {}
+    },
+    {
+      "quality": 80,
+      "format": "flv",
+      "new_description": "1080P 高清",
+      "display_desc": "1080P",
+      "superscript": "",
+      "codecs": [
+        "av01.0.08M.08.0.110.01.01.01.0",
+        "avc1.640032",
+        "hev1.1.6.L150.90"
+      ],
+      "can_watch_qn_reason": 0,
+      "limit_watch_reason": 0,
+      "report": {}
+    },
+    {
+      "quality": 64,
+      "format": "flv720",
+      "new_description": "720P 准高清",
+      "display_desc": "720P",
+      "superscript": "",
+      "codecs": [
+        "av01.0.08M.08.0.110.01.01.01.0",
+        "avc1.640028",
+        "hev1.1.6.L120.90"
+      ],
+      "can_watch_qn_reason": 0,
+      "limit_watch_reason": 0,
+      "report": {}
+    },
+    {
+      "quality": 32,
+      "format": "flv480",
+      "new_description": "480P 标清",
+      "display_desc": "480P",
+      "superscript": "",
+      "codecs": [
+        "av01.0.08M.08.0.110.01.01.01.0",
+        "avc1.64001F",
+        "hev1.1.6.L120.90"
+      ],
+      "can_watch_qn_reason": 0,
+      "limit_watch_reason": 0,
+      "report": {}
+    },
+    {
+      "quality": 16,
+      "format": "mp4",
+      "new_description": "360P 流畅",
+      "display_desc": "360P",
+      "superscript": "",
+      "codecs": [
+        "av01.0.08M.08.0.110.01.01.01.0",
+        "avc1.64001E",
+        "hev1.1.6.L120.90"
+      ],
+      "can_watch_qn_reason": 0,
+      "limit_watch_reason": 0,
+      "report": {}
+    }
+  ],
+  "dash": {
+    "duration": 213,
+    "minBufferTime": 1.5,
+    "min_buffer_time": 1.5,
+    "audio": [
+      {
+        "id": 30232,
+        "baseUrl": "https://example.invalid/audio-30232-0.m4s",
+        "base_url": "https://example.invalid/audio-30232-0.m4s",
+        "backupUrl": [
+          "https://example.invalid/backup-audio-30232-0-0.m4s",
+          "https://example.invalid/backup-audio-30232-0-1.m4s"
+        ],
+        "backup_url": [
+          "https://example.invalid/backup-audio-30232-0-0.m4s",
+          "https://example.invalid/backup-audio-30232-0-1.m4s"
+        ],
+        "bandwidth": 102931,
+        "mimeType": "audio/mp4",
+        "mime_type": "audio/mp4",
+        "codecs": "mp4a.40.2",
+        "width": 0,
+        "height": 0,
+        "frameRate": "",
+        "frame_rate": "",
+        "sar": "",
+        "startWithSap": 0,
+        "start_with_sap": 0,
+        "SegmentBase": {
+          "Initialization": "0-933",
+          "indexRange": "934-1481"
+        },
+        "segment_base": {
+          "initialization": "0-933",
+          "index_range": "934-1481"
+        },
+        "codecid": 0
+      },
+      {
+        "id": 30216,
+        "baseUrl": "https://example.invalid/audio-30216-1.m4s",
+        "base_url": "https://example.invalid/audio-30216-1.m4s",
+        "backupUrl": [
+          "https://example.invalid/backup-audio-30216-1-0.m4s",
+          "https://example.invalid/backup-audio-30216-1-1.m4s"
+        ],
+        "backup_url": [
+          "https://example.invalid/backup-audio-30216-1-0.m4s",
+          "https://example.invalid/backup-audio-30216-1-1.m4s"
+        ],
+        "bandwidth": 43962,
+        "mimeType": "audio/mp4",
+        "mime_type": "audio/mp4",
+        "codecs": "mp4a.40.5",
+        "width": 0,
+        "height": 0,
+        "frameRate": "",
+        "frame_rate": "",
+        "sar": "",
+        "startWithSap": 0,
+        "start_with_sap": 0,
+        "SegmentBase": {
+          "Initialization": "0-943",
+          "indexRange": "944-1491"
+        },
+        "segment_base": {
+          "initialization": "0-943",
+          "index_range": "944-1491"
+        },
+        "codecid": 0
+      },
+      {
+        "id": 30280,
+        "baseUrl": "https://example.invalid/audio-30280-2.m4s",
+        "base_url": "https://example.invalid/audio-30280-2.m4s",
+        "backupUrl": [
+          "https://example.invalid/backup-audio-30280-2-0.m4s",
+          "https://example.invalid/backup-audio-30280-2-1.m4s"
+        ],
+        "backup_url": [
+          "https://example.invalid/backup-audio-30280-2-0.m4s",
+          "https://example.invalid/backup-audio-30280-2-1.m4s"
+        ],
+        "bandwidth": 203786,
+        "mimeType": "audio/mp4",
+        "mime_type": "audio/mp4",
+        "codecs": "mp4a.40.2",
+        "width": 0,
+        "height": 0,
+        "frameRate": "",
+        "frame_rate": "",
+        "sar": "",
+        "startWithSap": 0,
+        "start_with_sap": 0,
+        "SegmentBase": {
+          "Initialization": "0-933",
+          "indexRange": "934-1481"
+        },
+        "segment_base": {
+          "initialization": "0-933",
+          "index_range": "934-1481"
+        },
+        "codecid": 0
+      }
+    ],
+    "dolby": {
+      "type": 0,
+      "audio": null
+    }
+  },
+  "_fixture": {
+    "recorded": "2026-10-23",
+    "source": "scripts/update_fixtures.py",
+    "has_flac": false
+  }
+}
